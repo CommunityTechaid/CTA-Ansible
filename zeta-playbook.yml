@@ -1,0 +1,125 @@
+---
+- hosts: all
+  become: yes
+
+  tasks:
+    - name: Set hostname to zeta
+      hostname:
+        name: zeta
+        use: debian
+
+    - name: Add the user "CTA"
+      ansible.builtin.user:
+        name: cta
+        comment: CTA
+        password: $y$j9T$vm5bBbCpck0Z0xVGAwMYH.$xhjNRN2lu1rVRSqxirb/XfNbU.tYrgC6f6J.6OJLZ0B
+
+    - name: Update apt cache
+      apt:
+        update_cache: true
+
+    - name: Upgrade packages (safely)
+      apt:
+        upgrade: safe
+
+# Nwipe stuff
+    - name: Install nwipe dependancies
+      apt:
+        pkg:
+          - build-essential
+          - pkg-config
+          - automake
+          - libncurses5-dev
+          - autotools-dev
+          - libparted-dev
+          - dmidecode
+          - coreutils
+          - smartmontools
+          - git
+        state: latest
+        update_cache: true
+
+    - name: Clone nwipe git repo
+      git:
+        repo: https://github.com/martijnvanbrummelen/nwipe.git
+        dest: $HOME/nwipe
+        clone: yes
+        update: yes
+        version: v0.32
+
+    - name: Run nwipe autogen script
+      command: 
+        cmd: bash ./autogen.sh
+        chdir: $HOME/nwipe
+
+    - name: Run nwipe configure script
+      command: 
+        cmd: bash ./configure
+        chdir: $HOME/nwipe
+
+    - name: Make package and install
+      make:
+        chdir: $HOME/nwipe
+        target: install
+      become: yes
+
+# Zeta Disc Utils stuff
+    - name: Install CTADiskHealth dependancies
+      apt:
+        pkg:
+          - lsscsi
+          - libatasmart-bin
+        state: latest
+        update_cache: true
+
+    - name: Clone ZetaDiscUtils git repo
+      git:
+        repo: https://github.com/CommunityTechaid/ZetaDiscUtils.git
+        dest: $HOME/ZetaDiscUtils
+        clone: yes
+        update: yes
+
+## CTADiskHealth
+    - name: Copy CTADiskHealth script to /usr/local
+      become: yes
+      command: 
+        cmd: cp $HOME/ZetaDiscUtils/CTADiskHealth.sh /usr/local/bin/CTADiskHealth
+
+## CTADiskWipe
+    - name: Clone ata-secure-erase git repo
+      git:
+        repo: https://github.com/TigerOnVaseline/ata-secure-erase.git
+        dest: $HOME/ata-secure-erase
+        clone: yes
+        update: yes
+
+    - name: Copy ata-secure-erase script to /usr/local
+      become: yes
+      command: 
+        cmd: cp $HOME/ata-secure-erase/ata-secure-erase.sh /usr/local/bin/ata-secure-erase.sh
+
+    - name: Copy CTADiskWipe script to /usr/local
+      become: yes
+      command: 
+        cmd: cp $HOME/ZetaDiscUtils/CTADiskWipe.sh /usr/local/bin/CTADiskWipe
+
+# Prevent powersaving
+    - name: Disable powersaving (sleep)
+      systemd:
+        name: sleep.target
+        masked: true
+
+    - name: Disable powersaving (hybrid-sleep)
+      systemd:
+        name: hybrid-sleep.target
+        masked: true
+
+    - name: Disable powersaving (suspend)
+      systemd:
+        name: suspend.target
+        masked: true
+
+    - name: Disable powersaving (hibernate)
+      systemd:
+        name: hibernate.target
+        masked: true

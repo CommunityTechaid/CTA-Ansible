@@ -1,0 +1,56 @@
+---
+- hosts: all
+  become: yes
+
+  tasks:
+    - name: Add the user "CTA"
+      ansible.builtin.user:
+        name: cta
+        comment: CTA
+        password: $y$j9T$vm5bBbCpck0Z0xVGAwMYH.$xhjNRN2lu1rVRSqxirb/XfNbU.tYrgC6f6J.6OJLZ0B
+
+    - name: Update apt cache
+      apt:
+        update_cache: true
+
+    - name: Upgrade packages (safely)
+      apt:
+        upgrade: safe
+
+## Setup PXE booting
+### Fetch shredOS image
+### Mount shredOS image
+### Fetch Blannco image
+### Mount Blancco image
+### Fetch SLAM Blancco image
+### Mount SLAM Blancco image
+### Fetch SystemRescueCD image
+### Mount --""-- image
+
+## Setup libvirt
+### Config network bridge
+### Setup Windows server
+
+# Install CTASecureWipeCerts
+    - name: Install CTASecureWipeCerts dependancies
+      apt:
+        pkg:
+          - dialog
+          - pythondialog
+        state: latest
+        update_cache: true
+
+    - name: Clone WipeCertificates git repo
+      become: yes
+      become_user: vagrant
+      git:
+        repo: https://github.com/CommunityTechaid/WipeCertificates.git
+        dest: /home/vagrant/WipeCertificates
+        clone: yes
+        update: yes
+
+## CTADiskHealth
+    - name: Copy CTADiskHealth script to /usr/local
+      become: yes
+      command: 
+        cmd: cp /home/vagrant/ZetaDiscUtils/CTADiskHealth.sh /usr/local/bin/CTADiskHealth
