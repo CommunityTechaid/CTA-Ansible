@@ -3,6 +3,11 @@
   become: yes
 
   tasks:
+    - name: Set hotname to theta
+      hostname:
+        name: theta
+        use: debian
+
     - name: Add the user "CTA"
       ansible.builtin.user:
         name: cta
@@ -17,40 +22,84 @@
       apt:
         upgrade: safe
 
-## Setup PXE booting
-### Fetch shredOS image
-### Mount shredOS image
-### Fetch Blannco image
-### Mount Blancco image
-### Fetch SLAM Blancco image
-### Mount SLAM Blancco image
-### Fetch SystemRescueCD image
-### Mount --""-- image
+# Setup PXE booting
+## Create folder for netboot
+    - name: Create /srv/netboot
+      file:
+        state: directory
+        path: /srv/netboot
 
-## Setup libvirt
-### Config network bridge
-### Setup Windows server
+## Set up DHCP server
+    - name: Install DHCP package
+      apt:
+        pkg: isc-dhcp-server
+        state: latest
+        update_cache: true
+
+    # -name: fetch DHCP config file
+    # ?  /etc/dhcp/dhcpd.conf  on theta ?
+
+    # -name: start and enable DHCP service
+
+## Set up TFTP server
+    - name: Install the TFTP package
+      apt:
+        pkg: tftpd-hpa
+        state: latest
+        update_cache: true
+
+    # -name: fetch TFTP config
+    # ?   /etc/default/tftpd-hpa on theta ?
+
+    # -name: start and enable TFTP service
+
+## menu.ipxe / PXE menu and conf
+## ??? rc-local / busybox listening on :80 on eth0 ???
+
+# Deal with images
+## Fetch shredOS image
+## Mount shredOS image
+## Fetch Blancco image
+## Mount Blancco image
+## Fetch SLAM Blancco image
+## Mount SLAM Blancco image
+## Fetch SystemRescueCD image
+## Mount --""-- image
+## Update fstab
+
+# Setup libvirt
+## Config network bridge
+## Setup Windows server
 
 # Install CTASecureWipeCerts
     - name: Install CTASecureWipeCerts dependancies
       apt:
         pkg:
           - dialog
-          - pythondialog
+          - python3-dialog
+          - git
         state: latest
         update_cache: true
 
     - name: Clone WipeCertificates git repo
-      become: yes
-      become_user: vagrant
       git:
         repo: https://github.com/CommunityTechaid/WipeCertificates.git
-        dest: /home/vagrant/WipeCertificates
+        dest: $HOME/WipeCertificates
         clone: yes
         update: yes
 
 ## CTADiskHealth
-    - name: Copy CTADiskHealth script to /usr/local
+    - name: Copy CTADiskHealth wrapper script to /usr/local
       become: yes
       command: 
-        cmd: cp /home/vagrant/ZetaDiscUtils/CTADiskHealth.sh /usr/local/bin/CTADiskHealth
+        cmd: cp $HOME/WipeCertificates/GenerateCerts.py /usr/local/bin/CTASecureWipeCerts
+    
+    - name: Copy CTADiskHealth .tex template to /usr/local
+      become: yes  
+      command: 
+        cmd: cp $HOME/WipeCertificates/CTA.tex /usr/local/bin/CTA.tex
+    
+    - name: Copy CTADiskHealth bash script to /usr/local
+      become: yes
+      command:
+        cmd: cp $HOME/WipeCertificates/GenCerts.sh /usr/local/bin/BashGenCerts.sh
