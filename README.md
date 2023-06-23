@@ -12,7 +12,7 @@ This presumes you're running Linux of some variety.
 These packages need to be installed:
 - `ansible` (for actually running the playbooks)
 - `vagrant` (for creating / managing VMs for testing)
-- `libvirt-daemon` / `virtualbox` (for actually running VMs)
+- `libvirt-daemon-system` / `virtualbox` (for actually running VMs)
 - `nfs-common` (a requirement of the Vagrant Debian image)
 
 (Warning: if your running on a fresh install of Debian the non-root user created whilst following the Debian GUI installer is NOT automatically added to sudoers. To do so run this:
@@ -50,9 +50,16 @@ nano ./Vagrantfile
 ```
 to then contain:
 ```
-config.vm.provision "ansible" do |ansible|
-        ansible.playbook = "zeta-playbook.yml"
-    end
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+Vagrant.configure("2") do |config|
+  config.vm.box = "debian/buster64"
+  # Provision conf for Ansible
+  config.vm.provision "ansible" do |ansible|
+    ansible.playbook = "zeta-playbook.yml"
+  end
+end
 ```
 
 Create and start VM
