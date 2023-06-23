@@ -22,7 +22,7 @@ su -c 'gpasswd -a $USER sudo'  # Swap $USER for actual name
 )
 
 ```bash
-sudo apt install ansible, vagrant, libvirt, nfs-util
+sudo apt install ansible vagrant libvirt-daemon nfs-common
 ```
 
 ## Testing
@@ -45,6 +45,10 @@ vagrant init debian/buster64
 ```
 
 Add / edit vagrant file to include relevant playbook
+```bash
+nano ./Vagrantfile
+```
+to then contain:
 ```
 config.vm.provision "ansible" do |ansible|
         ansible.playbook = "zeta-playbook.yml"
