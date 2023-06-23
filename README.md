@@ -17,15 +17,18 @@ Best way to test these playbooks is with vagrant as a method to create virtual m
 
 Move to temp folder
 ```bash
-cd ./Testing```
+cd ./Testing
+```
 
 Grab debian image
 ```bash
-vagrant box add debian/buster64```
+vagrant box add debian/buster64
+```
 
 Create default config
 ```bash
-vagrant init debian/buster64```
+vagrant init debian/buster64
+```
 
 Add / edit vagrant file to include relevant playbook
 ```
@@ -36,11 +39,13 @@ config.vm.provision "ansible" do |ansible|
 
 Create and start VM
 ```bash
-vagrant up```
+vagrant up
+```
 
 Dial into the VM to have a play and test
 ```bash
-vagrant ssh```
+vagrant ssh
+```
 
 ## Execution / Installation
 ### Local prerequisites
