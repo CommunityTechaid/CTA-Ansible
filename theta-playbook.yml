@@ -3,14 +3,14 @@
   become: yes
 
   tasks:
-    - name: Set hotname to theta
-      hostname:
-        name: theta
-        use: debian
+    # - name: Set hostname
+    #   hostname:
+    #     name: dev_theta
+        # use: systemd
 
     - name: Add the user "CTA"
       ansible.builtin.user:
-        name: cta
+        name: 'cta'
         comment: CTA
         password: $y$j9T$vm5bBbCpck0Z0xVGAwMYH.$xhjNRN2lu1rVRSqxirb/XfNbU.tYrgC6f6J.6OJLZ0B
 
@@ -36,10 +36,21 @@
         state: latest
         update_cache: true
 
-    # -name: fetch DHCP config file
-    # ?  /etc/dhcp/dhcpd.conf  on theta ?
+## Config config files
+    - name: fetch DHCP config file
+      ansible.builtin.copy:
+        src: ./files/dhcpd.conf
+        dest: /etc/dhcp/dhcpd.conf
+        owner: root
+        group: root
+        mode: u=rw,g=r,o=r
 
-    # -name: start and enable DHCP service
+## Start and enable DHCP service
+    - name: start and enable DHCP service
+      ansible.builtin.systemd_service:
+        state: started
+        name: isc-dhcp-server
+        enabled: true
 
 ## Set up TFTP server
     - name: Install the TFTP package
@@ -48,17 +59,24 @@
         state: latest
         update_cache: true
 
-    # -name: fetch TFTP config
-    # ?   /etc/default/tftpd-hpa on theta ?
+    - name: fetch TFTP config
+      ansible.builtin.copy:
+        src: ./files/tftpd-hpa.conf
+        dest: /etc/default/tftpd-hpa
+        owner: root
+        group: root
+        mode: u=rw,g=r,o=r
 
-    # -name: start and enable TFTP service
+    - name: start and enable TFTP service
+        ansible.builtin.systemd_service:
+          state: started
+          name: tftpd-hpa
+          enabled: true
 
 ## menu.ipxe / PXE menu and conf
 ## ??? rc-local / busybox listening on :80 on eth0 ???
 
-# Firewall rule to only allow cloud.blancco.com traffic out !!!
-
-# Deal with images
+## Deal with images
 ## Fetch shredOS image
 ## Mount shredOS image
 ## Fetch Blancco image
@@ -67,6 +85,9 @@
 ## Mount SLAM Blancco image
 ## Fetch SystemRescueCD image
 ## Mount --""-- image
+
+## Firewall rule to only allow cloud.blancco.com traffic out !!!
+
 ## Update fstab
 
 
@@ -106,4 +127,4 @@
     - name: Copy CTADiskHealth bash script to /usr/local
       become: yes
       command:
-        cmd: cp $HOME/WipeCertificates/GenCerts.sh /usr/local/bin/BashGenCerts.sh
+        cmd: cp $HOME/WipeCertificates/BashGenCerts.sh /usr/local/bin/BashGenCerts.sh
