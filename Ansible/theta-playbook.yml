@@ -36,11 +36,20 @@
         state: latest
         update_cache: true
 
-## Config config files
+## Copy DHCP config files
     - name: fetch DHCP config file
       ansible.builtin.copy:
         src: ./files/dhcpd.conf
         dest: /etc/dhcp/dhcpd.conf
+        owner: root
+        group: root
+        mode: u=rw,g=r,o=r
+
+## Copy ISC-DHCP config files (this dictates which dev the DHCP server listens / runs on )
+    - name: fetch ISC-DHCP config file
+      ansible.builtin.copy:
+        src: ./files/isc-dhcp-server
+        dest: /etc/default/isc-dhcp-server
         owner: root
         group: root
         mode: u=rw,g=r,o=r
@@ -68,10 +77,10 @@
         mode: u=rw,g=r,o=r
 
     - name: start and enable TFTP service
-        ansible.builtin.systemd_service:
-          state: started
-          name: tftpd-hpa
-          enabled: true
+      ansible.builtin.systemd_service:
+        state: started
+        name: tftpd-hpa
+        enabled: true
 
 ## menu.ipxe / PXE menu and conf
 ## ??? rc-local / busybox listening on :80 on eth0 ???

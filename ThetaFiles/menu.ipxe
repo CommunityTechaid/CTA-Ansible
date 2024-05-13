@@ -1,0 +1,65 @@
+#!ipxe
+
+menu Community TechAid Drive Eraser
+
+item cta-shredos CTA Secure Wipe
+item --gap --
+item blancco-img Blancco 
+item slam-blancco-img SLaM Blancco
+item --gap --
+item --gap -- Fallbacks: use if the above fail
+item blancco-fallback Blancco (fallback)
+item slam-blancco-fallback SLaM Blancco (fallback)
+item --gap --
+item --gap -- Tools
+item partedmagic Parted Magic
+item --gap --
+item --gap --
+item --gap --
+item test-shredos TEST CTA ShredOS
+choose wiper
+
+goto ${wiper}
+
+## 2022-07-05: replaced memdisk method with below to enable UEFI booting (memdisk doesn't do EFI)
+:cta-shredos
+kernel http://${next-server}/ShredOS/CTA-ShredOS-mnt/boot/shredos console=tty3 loglevel=3 loadkeys=uk nomodeset nwipe_options="--method=zero --verify=last --noblank --nousb --nowait" lftp="open 10.0.0.1; user netboot-log ThreeInOne!; cd shredos; mput nwipe_*.txt"
+boot
+
+## 2024-01-31 TC: Added test version of new ShredOS
+:test-shredos
+kernel http://${next-server}/ShredOS/Test-CTA-ShredOS-mnt/boot/shredos console=tty3 loglevel=3 loadkeys=uk nomodeset nwipe_options="--method=zero --verify=last --noblank --nousb --nowait" lftp="open 10.0.0.1; user netboot-log ThreeInOne!; cd test-shredos; mput nwipe_*.txt; mput *.pdf; mput /usr/output/*.json; exit" get_scripts="set net:max-retries 30; open 10.0.0.1; user netboot-log ThreeInOne!; cd scripts; mget -O /usr/bin/scripts ./*sh; exit"
+boot
+
+:slam-blancco-fallback
+initrd Blancco/SLAM-blancco-7.4.0.iso
+chain memdisk iso stack=80000
+
+:blancco-fallback
+initrd Blancco/CTA-blancco-7.4.0.iso
+chain memdisk iso stack=80000
+
+:partedmagic
+kernel http://${next-server}/PartedMagic/bzImage initrd=initrd.img initrd=fu.img initrd=m.img edd=on vga=normal netsrc=wget neturl="http://${next-server}/PartedMagic/pmodules/" netargs="-U pmagicboot"
+initrd http://${next-server}/PartedMagic/initrd.img
+initrd http://${next-server}/PartedMagic/fu.img
+initrd http://${next-server}/PartedMagic/m.img
+boot
+
+:blancco-img
+kernel http://${next-server}/Blancco/CTA-Blancco-mnt/arch/boot/x86_64/vmlinuz-bde-linux
+initrd http://${next-server}/Blancco/CTA-Blancco-mnt/arch/boot/intel-ucode.img
+initrd http://${next-server}/Blancco/CTA-Blancco-mnt/arch/boot/amd-ucode.img
+initrd http://${next-server}/Blancco/CTA-Blancco-mnt/arch/boot/config.img
+initrd http://${next-server}/Blancco/CTA-Blancco-mnt/arch/boot/x86_64/initramfs-bde-linux.img
+imgargs vmlinuz-bde-linux archisobasedir=arch archiso_http_srv=${next-server}/Blancco/CTA-Blancco-mnt/ ip=dhcp initrd=config.img initrd=intel-ucode.img memtinitrd=amd-ucode.img oinitrd=initramfs-bde-linux.img est=00 loglevel=0 flr libata.allow_tpm=1
+boot
+
+:slam-blancco-img
+kernel http://${next-server}/Blancco/SLAM-Blancco-mnt/arch/boot/x86_64/vmlinuz-bde-linux
+initrd http://${next-server}/Blancco/SLAM-Blancco-mnt/arch/boot/intel-ucode.img
+initrd http://${next-server}/Blancco/SLAM-Blancco-mnt/arch/boot/amd-ucode.img
+initrd http://${next-server}/Blancco/SLAM-Blancco-mnt/arch/boot/config.img
+initrd http://${next-server}/Blancco/SLAM-Blancco-mnt/arch/boot/x86_64/initramfs-bde-linux.img
+imgargs vmlinuz-bde-linux archisobasedir=arch archiso_http_srv=${next-server}/Blancco/SLAM-Blancco-mnt/ ip=dhcp initrd=config.img initrd=intel-ucode.img memtinitrd=amd-ucode.img oinitrd=initramfs-bde-linux.img est=00 loglevel=0 flr libata.allow_tpm=1
+boot
