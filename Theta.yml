@@ -1,0 +1,146 @@
+---
+- name: Set up Theta
+  hosts: TEST-Theta
+  become: yes
+  
+  tasks:
+  - name: Make sure apt cache is up to date
+    apt:
+      update-cache: true
+      
+  - name: Upgrade packages
+    apt:
+      upgrade: full
+
+  - name: Install required packages
+    apt:
+      pkg: 
+      - isc-dhcp-server
+      - git
+      - tftpd-hpa
+      - busybox
+      state: latest
+      update-cache: true
+
+  - name: Create folder for serving PXE boot files
+    file:
+      state: directory
+      path: /srv/netboot
+
+  - name: Create temporary folder
+    tempfile:
+      state: directory
+    register: temp_dir
+
+  - name: Interfaces debug info
+    debug:
+      verbosity: 3
+      msg: "Default interface: {{ ansible_default_ipv4.interface }}\\n\
+            All interfaces: {{ ansible_interfaces }}"
+            
+  - name: Initialise list for sussing out interfaces
+    set_fact:
+      non_pxe_interfaces: ['lo']
+
+  - name: Add default inteface to list of interfaces
+    set_fact:
+      non_pxe_interfaces: "{{ non_pxe_interfaces + [ ansible_default_ipv4.interface ] }}"
+
+  - name: Diff all interfaces with non_pxe_interfaces to suss out PXE interface
+    set_fact:
+      pxe_interface_list: "{{ ansible_interfaces | difference(non_pxe_interfaces) }}"
+
+  - name: Save PXE interface to var as string for future use
+    set_fact:
+      pxe_interface: "{{ pxe_interface_list[0] }}"
+
+  - name: Clone PXE Boot repo
+    git:
+      repo: "https://github.com/CommunityTechaid/PXE-Booting.git"
+      dest: '{{ temp_dir["path"] }}/PXE-Booting'
+      version: main
+
+  - name: Copy isc-dhcp files
+    copy:
+      remote_src: true # Src file exists remotely _to the ansible controller_
+      src: '{{ temp_dir["path"] }}/PXE-Booting/isc-dhcpd.conf'
+      dest: /etc/dhcp/dhcpd.conf
+
+  - name: "Change interface in dhcp.conf to {{ pxe_interface }}"
+    replace:
+      path: "/etc/dhcp/dhcpd.conf"
+      regexp: "(?<= interface )eno1(?=;$)"
+      replace: "{{ pxe_interface }}"
+
+  - name: "Change interface in /etc/default/isc-dhcp-server to {{ pxe_interface }}"
+    replace:
+      path: "/etc/default/isc-dhcp-server"
+      regexp: '^INTERFACESv4=""'
+      replace: 'INTERFACESv4="{{ pxe_interface }}"'
+
+  - name: "Remove IPv6 from /etc/default/isc-dhcp-server"
+    replace:
+      path: "/etc/default/isc-dhcp-server"
+      regexp: '^INTERFACESv6=""'
+      replace: ''
+
+  - name: (Re)start isc-dhcp service and make sure it's enabled
+    systemd_service:
+      name: isc-dhcp-server.service
+      state: restarted
+      enabled: true
+
+  - name: Copy tftpd-hpa file
+    copy:
+      remote_src: true # Src file exists remotely _to the ansible controller_
+      src: '{{ temp_dir["path"] }}/PXE-Booting/tftpd-hpa.conf'
+      dest: /etc/default/tftpd-hpa
+
+  - name: (Re)start tftpd-hpa service and make sure it's enabled
+    systemd_service:
+      name: tftpd-hpa.service
+      state: restarted
+      enabled: true
+
+  - name: Copy menu.ipxe to server location
+    copy:
+      remote_src: true # Src file exists remotely _to the ansible controller_
+      src: '{{ temp_dir["path"] }}/PXE-Booting/menu.ipxe'
+      dest: /srv/netboot/menu.ipxe
+
+  - name: Copy ipxe.efi to server location
+    copy:
+      remote_src: true  # Src file exists remotely _to the ansible controller_
+      src: '{{ temp_dir["path"] }}/PXE-Booting/ipxe.efi'
+      dest: /srv/netboot/ipxe.efi
+
+  - name: Copy BusyBoxHTTP service file
+    copy:
+      remote_src: true # Src file exists remotely _to the ansible controller_
+      src: '{{ temp_dir["path"] }}/PXE-Booting/BusyBoxHTTP.service'
+      dest: /etc/systemd/system/BusyBoxHTTP.service
+
+  - name: (Re)start BusyBoxHTTP.service and make sure it's enabled
+    systemd_service:
+      daemon_reload: true
+      name: BusyBoxHTTP.service
+      state: started
+      enabled: true 
+
+  - name: Clone Hardware Info scripts repo
+    git:
+      repo: "https://github.com/CommunityTechaid/HardwareInfo.git"
+      dest: '{{ temp_dir["path"] }}/HardwareInfo'
+      version: main
+
+  - name: Create folder for serving Hardware Info scripts
+    file:
+      state: directory
+      path: /srv/netboot/log/scripts
+ 
+  - name: Copy Hardware Info scripts to server location
+    copy:
+      remote_src: true  # Src file exists remotely _to the ansible controller_
+      src: '{{ temp_dir["path"] }}/HardwareInfo/scripts/'
+      dest: /srv/netboot/log/scripts/
+
