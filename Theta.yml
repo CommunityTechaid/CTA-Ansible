@@ -144,3 +144,10 @@
       src: '{{ temp_dir["path"] }}/HardwareInfo/scripts/'
       dest: /srv/netboot/log/scripts/
 
+  - name: Clone Techaid Device Update service repo
+    git:
+      repo: "git@github.com:CommunityTechaid/techaid-device-update-service.git"
+      dest: '{{ temp_dir["path"] }}/TechaidDeviceUpdate'
+      version: main
+
+     
