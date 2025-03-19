@@ -22,7 +22,7 @@
       state: latest
       update-cache: true
 
-  - name: Create folder for serving PXE boot files
+  - name: Create root folder for serving PXE boot files
     file:
       state: directory
       path: /srv/netboot
@@ -148,6 +148,6 @@
     git:
       repo: "git@github.com:CommunityTechaid/techaid-device-update-service.git"
       dest: '{{ temp_dir["path"] }}/TechaidDeviceUpdate'
+      key_file: "/vagrant/ssh-keys/github_ed25519"
+      accept_newhostkey: true
       version: main
-
-     
