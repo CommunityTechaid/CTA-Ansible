@@ -159,6 +159,12 @@
       dest: /usr/local/bin/techaid-device-update-service.py
       mode: a+x
 
+  - name: "Change config path in /usr/local/bin/techaid-device-update-service.py"
+    replace:
+      path: "/usr/local/bin/techaid-device-update-service.py"
+      regexp: "file_path = 'config.json'"
+      replace: "file_path = '/usr/local/share/techaid-device-update-service-conf.json'"
+
   - name: Copy TechaidDeviceUpdate config to sane, accesible server location.
     copy:
       remote_src: true # Src file exists remotely _to the ansible controller_
