@@ -151,3 +151,43 @@
       key_file: "/vagrant/ssh-keys/github_ed25519"
       accept_newhostkey: true
       version: main
+
+  - name: Copy TechaidDeviceUpdate main.py to sane, accesible server location.
+    copy:
+      remote_src: true # Src file exists remotely _to the ansible controller_
+      src: '{{ temp_dir["path"] }}/TechaidDeviceUpdate/main.py'
+      dest: /usr/local/bin/techaid-device-update-service.py
+      mode: a+x
+
+  - name: Copy TechaidDeviceUpdate config to sane, accesible server location.
+    copy:
+      remote_src: true # Src file exists remotely _to the ansible controller_
+      src: '{{ temp_dir["path"] }}/TechaidDeviceUpdate/config.json'
+      dest: /usr/local/share/techaid-device-update-service-conf.json
+
+  - name: Copy TechaidDeviceUpdate systemd service files.
+    copy:
+      remote_src: true # Src file exists remotely _to the ansible controller_
+      src: '{{ temp_dir["path"] }}/TechaidDeviceUpdate/ServiceFiles/'
+      dest: /etc/systemd/system/
+
+  - name: Start TaDA-Device-Status-Update.service and make sure it's enabled
+    systemd_service:
+      daemon_reload: true
+      name: TaDA-Device-Status-Update.service
+      state: started
+      enabled: true
+
+  - name: Start TaDA-Hardware-Info-Update.service and make sure it's enabled
+    systemd_service:
+      daemon_reload: true
+      name: TaDA-Hardware-Info-Update.service
+      state: started
+      enabled: true
+
+  - name: Start TaDA-Hardware-Info-Update-EraseIT.service and make sure it's enabled
+    systemd_service:
+      daemon_reload: true
+      name: TaDA-Hardware-Info-Update-EraseIT.service
+      state: started
+      enabled: true
