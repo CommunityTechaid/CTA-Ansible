@@ -4,6 +4,13 @@
   become: yes
   
   tasks:
+
+  ####
+  #
+  # Basics
+  #
+  ####
+
   - name: Make sure apt cache is up to date
     apt:
       update-cache: true
@@ -32,6 +39,12 @@
       state: directory
     register: temp_dir
 
+  ####
+  #
+  # Network faff
+  #
+  ####
+
   - name: Interfaces debug info
     debug:
       verbosity: 3
@@ -53,6 +66,12 @@
   - name: Save PXE interface to var as string for future use
     set_fact:
       pxe_interface: "{{ pxe_interface_list[0] }}"
+
+  ####
+  #
+  # PXE Booting
+  #
+  ####
 
   - name: Clone PXE Boot repo
     git:
@@ -127,6 +146,12 @@
       state: started
       enabled: true 
 
+  ####
+  #
+  # Hardware Info scripts
+  #
+  ####
+
   - name: Clone Hardware Info scripts repo
     git:
       repo: "https://github.com/CommunityTechaid/HardwareInfo.git"
@@ -143,6 +168,12 @@
       remote_src: true  # Src file exists remotely _to the ansible controller_
       src: '{{ temp_dir["path"] }}/HardwareInfo/scripts/'
       dest: /srv/netboot/log/scripts/
+
+  ####
+  #
+  # TaDa Device Update Service
+  #
+  ####
 
   - name: Clone Techaid Device Update service repo
     git:
@@ -197,3 +228,33 @@
       name: TaDA-Hardware-Info-Update-EraseIT.service
       state: started
       enabled: true
+
+  ####
+  #
+  # CTA Wipe Certificates
+  #
+  ####
+
+  ####
+  #
+  # HardwareOS
+  #
+  ####
+
+  ####
+  #
+  # CTA ShredOS
+  #
+  ####
+
+  ####
+  #
+  # CTA Linux ISO
+  #
+  ####
+
+  ####
+  #
+  # VM Backups
+  #
+  ####
