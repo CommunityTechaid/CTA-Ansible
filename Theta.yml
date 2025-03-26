@@ -22,10 +22,27 @@
   - name: Install required packages
     apt:
       pkg: 
+      # For PXE
       - isc-dhcp-server
       - git
       - tftpd-hpa
       - busybox
+      # For building Shred/HardwareOS
+      - build-essential
+      - automake
+      - pkg-config
+      - libncurses5-dev
+      - autotools-dev
+      - libparted-dev
+      - dmidecode
+      - coreutils
+      - smartmontools
+      - unzip
+      - bc
+      - rsync
+      # - libssl-dev
+      # - libelf-dev
+      # - mtools
       state: latest
       update-cache: true
 
@@ -35,6 +52,7 @@
       path: /srv/netboot
 
   - name: Create temporary folder
+    become_user: vagrant
     tempfile:
       state: directory
     register: temp_dir
@@ -85,19 +103,19 @@
       src: '{{ temp_dir["path"] }}/PXE-Booting/isc-dhcpd.conf'
       dest: /etc/dhcp/dhcpd.conf
 
-  - name: "Change interface in dhcp.conf to {{ pxe_interface }}"
+  - name: Change interface in dhcp.conf to {{ pxe_interface }}
     replace:
       path: "/etc/dhcp/dhcpd.conf"
       regexp: "(?<= interface )eno1(?=;$)"
       replace: "{{ pxe_interface }}"
 
-  - name: "Change interface in /etc/default/isc-dhcp-server to {{ pxe_interface }}"
+  - name: Change interface in /etc/default/isc-dhcp-server to {{ pxe_interface }}
     replace:
       path: "/etc/default/isc-dhcp-server"
       regexp: '^INTERFACESv4=""'
       replace: 'INTERFACESv4="{{ pxe_interface }}"'
 
-  - name: "Remove IPv6 from /etc/default/isc-dhcp-server"
+  - name: Remove IPv6 from /etc/default/isc-dhcp-server
     replace:
       path: "/etc/default/isc-dhcp-server"
       regexp: '^INTERFACESv6=""'
@@ -190,7 +208,7 @@
       dest: /usr/local/bin/techaid-device-update-service.py
       mode: a+x
 
-  - name: "Change config path in /usr/local/bin/techaid-device-update-service.py"
+  - name: Change config path in /usr/local/bin/techaid-device-update-service.py
     replace:
       path: "/usr/local/bin/techaid-device-update-service.py"
       regexp: "file_path = 'config.json'"
@@ -229,11 +247,31 @@
       state: started
       enabled: true
 
+
   ####
   #
-  # CTA Wipe Certificates
+  # CTA ShredOS
   #
   ####
+  
+  # - name: Clone CTA ShredOS repo
+  #   git:
+  #     repo: "https://github.com/CommunityTechaid/CTA-ShredOS.git"
+  #     dest: '{{ temp_dir["path"] }}/CTAShredOS'
+  #     version: master
+
+  # - name: Initialise config for building CTAShredOS
+  #   shell: make shredos_defconfig
+  #   args:
+  #     chdir: '{{ temp_dir["path"] }}/CTAShredOS'
+
+  # - name: Actually build CTAShredOS. (This'll take a while.)
+  #   shell: make
+  #   args:
+  #     chdir: '{{ temp_dir["path"] }}/CTAShredOS'
+  
+  # cp files to /srv/netboot
+  # mount
 
   ####
   #
@@ -241,11 +279,32 @@
   #
   ####
 
-  ####
-  #
-  # CTA ShredOS
-  #
-  ####
+  - name: Clone CTA Hardware OS repo
+    become_user: vagrant
+    git:
+      repo: "git@github.com:CommunityTechaid/HardwareOS.git"
+      dest: '{{ temp_dir["path"] }}/CTAHardwareOS'
+      key_file: "/vagrant/ssh-keys/github_ed25519"
+      accept_newhostkey: true
+      version: main
+
+  - name: Initialise config for building CTA Hardware OS
+    shell: make HardwareOS_defconfig
+    become_user: vagrant
+    args:
+      chdir: '{{ temp_dir["path"] }}/CTAHardwareOS'
+
+  - name: Actually build CTA Hardware OS. (This'll take a while.)
+    shell: make
+    become_user: vagrant
+    args:
+      chdir: '{{ temp_dir["path"] }}/CTAHardwareOS'
+
+  - name: Copy Hardware OS to server location
+    copy:
+      remote_src: true  # Src file exists remotely _to the ansible controller_
+      src: '{{ temp_dir["path"] }}/CTAHardwareOS/output/images/bzImage'
+      dest: /srv/netboot/HardwareOS/bzImage
 
   ####
   #
@@ -256,5 +315,11 @@
   ####
   #
   # VM Backups
+  #
+  ####
+
+  ####
+  #
+  # CTA Wipe Certificates
   #
   ####

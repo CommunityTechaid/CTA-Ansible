@@ -16,6 +16,12 @@ Vagrant.configure("2") do |config|
 
   config.vm.post_up_message = "Theta has been provisioned"
 
+  # Specified the below 'cause building Shred/Hardware OS OOM'ed
+  config.vm.provider :libvirt do |libvirt|
+    libvirt.cpus = 4
+    libvirt.memory = 4096
+  end
+
   config.vm.provision "ansible" do |ansible|
     ansible.playbook = "Theta.yml"
   end
