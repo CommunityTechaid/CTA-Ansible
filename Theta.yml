@@ -247,7 +247,6 @@
       state: started
       enabled: true
 
-
   ####
   #
   # CTA ShredOS
@@ -275,51 +274,63 @@
 
   ####
   #
+  # LibVirt / VM Host
+  #
+  ####
+
+  ####
+  #
+  # VM Backups / Guests
+  #
+  ####
+
+  ####
+  #
+  # EraseIT Image
+  #
+  ####
+
+  ####
+  #
   # HardwareOS
   #
   ####
 
-  - name: Clone CTA Hardware OS repo
-    become_user: vagrant
-    git:
-      repo: "git@github.com:CommunityTechaid/HardwareOS.git"
-      dest: '{{ temp_dir["path"] }}/CTAHardwareOS'
-      key_file: "/vagrant/ssh-keys/github_ed25519"
-      accept_newhostkey: true
-      version: main
+  # - name: Clone CTA Hardware OS repo
+  #   become_user: vagrant
+  #   git:
+  #     repo: "git@github.com:CommunityTechaid/HardwareOS.git"
+  #     dest: '{{ temp_dir["path"] }}/CTAHardwareOS'
+  #     key_file: "/vagrant/ssh-keys/github_ed25519"
+  #     accept_newhostkey: true
+  #     version: main
 
-  - name: Initialise config for building CTA Hardware OS
-    shell: make HardwareOS_defconfig
-    become_user: vagrant
-    args:
-      chdir: '{{ temp_dir["path"] }}/CTAHardwareOS'
+  # - name: Initialise config for building CTA Hardware OS
+  #   shell: make HardwareOS_defconfig
+  #   become_user: vagrant
+  #   args:
+  #     chdir: '{{ temp_dir["path"] }}/CTAHardwareOS'
 
-  - name: Actually build CTA Hardware OS. (This'll take a while.)
-    shell: make
-    become_user: vagrant
-    args:
-      chdir: '{{ temp_dir["path"] }}/CTAHardwareOS'
+  # - name: Actually build CTA Hardware OS. (This'll take a while.)
+  #   shell: make
+  #   become_user: vagrant
+  #   args:
+  #     chdir: '{{ temp_dir["path"] }}/CTAHardwareOS'
 
-  - name: Copy Hardware OS to server location
-    copy:
-      remote_src: true  # Src file exists remotely _to the ansible controller_
-      src: '{{ temp_dir["path"] }}/CTAHardwareOS/output/images/bzImage'
-      dest: /srv/netboot/HardwareOS/bzImage
-
+  # - name: Copy Hardware OS to server location
+  #   copy:
+  #     remote_src: true  # Src file exists remotely _to the ansible controller_
+  #     src: '{{ temp_dir["path"] }}/CTAHardwareOS/output/images/bzImage'
+  #     dest: /srv/netboot/HardwareOS/bzImage
+  
   ####
   #
-  # CTA Linux ISO
-  #
-  ####
-
-  ####
-  #
-  # VM Backups
+  # CTA Wipe Certificates (Defunct?)
   #
   ####
 
   ####
   #
-  # CTA Wipe Certificates
+  # CTA Linux ISO (Defunct?)
   #
   ####
