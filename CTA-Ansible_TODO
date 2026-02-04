@@ -1,0 +1,54 @@
+CTA-Ansible_TODO
+
+ROLES: All
+# set hostnames
+# add users (know good keys?)
+# change root passwd
+# update apt
+
+
+ROLES: WindowsServer
+# install libvirt and dependencies
+
+# set up bridge network (bridge windows VM network with eth0)
+
+# fetch server iso
+# create server VM (image?)
+# start server VM
+
+# fetch window10 iso? (or image?)
+# create win10 VM
+# start win10 VM
+
+
+ROLES: WipingService
+# check for two eth devs, fail if only one. Use eth1 (second device) wiping
+
+# set iptables rule to disallow everything other than blancco out of network
+
+# created needed folder structures
+
+# install tftp, isc-dhcp & deps
+
+# fetch iPXE files
+
+# install configs for tftp, isc-dhcp etc
+
+# fetch pxe.menu
+
+# fetch external ISOs
+
+# git clone CTA-shredOS and build good image
+# git clone CTA-mint and build good image
+
+# git clone automagic script and enable service
+
+# update fstab to ensure ISOs/images are properly remounted after reboot
+
+
+
+ROLES: File Server
+
+
+IDEAS:
+- Push wiping cert to DB?
