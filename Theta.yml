@@ -1,0 +1,336 @@
+---
+- name: Set up Theta
+  hosts: TEST-Theta
+  become: yes
+  
+  tasks:
+
+  ####
+  #
+  # Basics
+  #
+  ####
+
+  - name: Make sure apt cache is up to date
+    apt:
+      update-cache: true
+      
+  - name: Upgrade packages
+    apt:
+      upgrade: full
+
+  - name: Install required packages
+    apt:
+      pkg: 
+      # For PXE
+      - isc-dhcp-server
+      - git
+      - tftpd-hpa
+      - busybox
+      # For building Shred/HardwareOS
+      - build-essential
+      - automake
+      - pkg-config
+      - libncurses5-dev
+      - autotools-dev
+      - libparted-dev
+      - dmidecode
+      - coreutils
+      - smartmontools
+      - unzip
+      - bc
+      - rsync
+      # - libssl-dev
+      # - libelf-dev
+      # - mtools
+      state: latest
+      update-cache: true
+
+  - name: Create root folder for serving PXE boot files
+    file:
+      state: directory
+      path: /srv/netboot
+
+  - name: Create temporary folder
+    become_user: vagrant
+    tempfile:
+      state: directory
+    register: temp_dir
+
+  ####
+  #
+  # Network faff
+  #
+  ####
+
+  - name: Interfaces debug info
+    debug:
+      verbosity: 3
+      msg: "Default interface: {{ ansible_default_ipv4.interface }}\\n\
+            All interfaces: {{ ansible_interfaces }}"
+            
+  - name: Initialise list for sussing out interfaces
+    set_fact:
+      non_pxe_interfaces: ['lo']
+
+  - name: Add default inteface to list of interfaces
+    set_fact:
+      non_pxe_interfaces: "{{ non_pxe_interfaces + [ ansible_default_ipv4.interface ] }}"
+
+  - name: Diff all interfaces with non_pxe_interfaces to suss out PXE interface
+    set_fact:
+      pxe_interface_list: "{{ ansible_interfaces | difference(non_pxe_interfaces) }}"
+
+  - name: Save PXE interface to var as string for future use
+    set_fact:
+      pxe_interface: "{{ pxe_interface_list[0] }}"
+
+  ####
+  #
+  # PXE Booting
+  #
+  ####
+
+  - name: Clone PXE Boot repo
+    git:
+      repo: "https://github.com/CommunityTechaid/PXE-Booting.git"
+      dest: '{{ temp_dir["path"] }}/PXE-Booting'
+      version: main
+
+  - name: Copy isc-dhcp files
+    copy:
+      remote_src: true # Src file exists remotely _to the ansible controller_
+      src: '{{ temp_dir["path"] }}/PXE-Booting/isc-dhcpd.conf'
+      dest: /etc/dhcp/dhcpd.conf
+
+  - name: Change interface in dhcp.conf to {{ pxe_interface }}
+    replace:
+      path: "/etc/dhcp/dhcpd.conf"
+      regexp: "(?<= interface )eno1(?=;$)"
+      replace: "{{ pxe_interface }}"
+
+  - name: Change interface in /etc/default/isc-dhcp-server to {{ pxe_interface }}
+    replace:
+      path: "/etc/default/isc-dhcp-server"
+      regexp: '^INTERFACESv4=""'
+      replace: 'INTERFACESv4="{{ pxe_interface }}"'
+
+  - name: Remove IPv6 from /etc/default/isc-dhcp-server
+    replace:
+      path: "/etc/default/isc-dhcp-server"
+      regexp: '^INTERFACESv6=""'
+      replace: ''
+
+  - name: (Re)start isc-dhcp service and make sure it's enabled
+    systemd_service:
+      name: isc-dhcp-server.service
+      state: restarted
+      enabled: true
+
+  - name: Copy tftpd-hpa file
+    copy:
+      remote_src: true # Src file exists remotely _to the ansible controller_
+      src: '{{ temp_dir["path"] }}/PXE-Booting/tftpd-hpa.conf'
+      dest: /etc/default/tftpd-hpa
+
+  - name: (Re)start tftpd-hpa service and make sure it's enabled
+    systemd_service:
+      name: tftpd-hpa.service
+      state: restarted
+      enabled: true
+
+  - name: Copy menu.ipxe to server location
+    copy:
+      remote_src: true # Src file exists remotely _to the ansible controller_
+      src: '{{ temp_dir["path"] }}/PXE-Booting/menu.ipxe'
+      dest: /srv/netboot/menu.ipxe
+
+  - name: Copy ipxe.efi to server location
+    copy:
+      remote_src: true  # Src file exists remotely _to the ansible controller_
+      src: '{{ temp_dir["path"] }}/PXE-Booting/ipxe.efi'
+      dest: /srv/netboot/ipxe.efi
+
+  - name: Copy BusyBoxHTTP service file
+    copy:
+      remote_src: true # Src file exists remotely _to the ansible controller_
+      src: '{{ temp_dir["path"] }}/PXE-Booting/BusyBoxHTTP.service'
+      dest: /etc/systemd/system/BusyBoxHTTP.service
+
+  - name: (Re)start BusyBoxHTTP.service and make sure it's enabled
+    systemd_service:
+      daemon_reload: true
+      name: BusyBoxHTTP.service
+      state: started
+      enabled: true 
+
+  ####
+  #
+  # Hardware Info scripts
+  #
+  ####
+
+  - name: Clone Hardware Info scripts repo
+    git:
+      repo: "https://github.com/CommunityTechaid/HardwareInfo.git"
+      dest: '{{ temp_dir["path"] }}/HardwareInfo'
+      version: main
+
+  - name: Create folder for serving Hardware Info scripts
+    file:
+      state: directory
+      path: /srv/netboot/log/scripts
+ 
+  - name: Copy Hardware Info scripts to server location
+    copy:
+      remote_src: true  # Src file exists remotely _to the ansible controller_
+      src: '{{ temp_dir["path"] }}/HardwareInfo/scripts/'
+      dest: /srv/netboot/log/scripts/
+
+  ####
+  #
+  # TaDa Device Update Service
+  #
+  ####
+
+  - name: Clone Techaid Device Update service repo
+    git:
+      repo: "git@github.com:CommunityTechaid/techaid-device-update-service.git"
+      dest: '{{ temp_dir["path"] }}/TechaidDeviceUpdate'
+      key_file: "/vagrant/ssh-keys/github_ed25519"
+      accept_newhostkey: true
+      version: main
+
+  - name: Copy TechaidDeviceUpdate main.py to sane, accesible server location.
+    copy:
+      remote_src: true # Src file exists remotely _to the ansible controller_
+      src: '{{ temp_dir["path"] }}/TechaidDeviceUpdate/main.py'
+      dest: /usr/local/bin/techaid-device-update-service.py
+      mode: a+x
+
+  - name: Change config path in /usr/local/bin/techaid-device-update-service.py
+    replace:
+      path: "/usr/local/bin/techaid-device-update-service.py"
+      regexp: "file_path = 'config.json'"
+      replace: "file_path = '/usr/local/share/techaid-device-update-service-conf.json'"
+
+  - name: Copy TechaidDeviceUpdate config to sane, accesible server location.
+    copy:
+      remote_src: true # Src file exists remotely _to the ansible controller_
+      src: '{{ temp_dir["path"] }}/TechaidDeviceUpdate/config.json'
+      dest: /usr/local/share/techaid-device-update-service-conf.json
+
+  - name: Copy TechaidDeviceUpdate systemd service files.
+    copy:
+      remote_src: true # Src file exists remotely _to the ansible controller_
+      src: '{{ temp_dir["path"] }}/TechaidDeviceUpdate/ServiceFiles/'
+      dest: /etc/systemd/system/
+
+  - name: Start TaDA-Device-Status-Update.service and make sure it's enabled
+    systemd_service:
+      daemon_reload: true
+      name: TaDA-Device-Status-Update.service
+      state: started
+      enabled: true
+
+  - name: Start TaDA-Hardware-Info-Update.service and make sure it's enabled
+    systemd_service:
+      daemon_reload: true
+      name: TaDA-Hardware-Info-Update.service
+      state: started
+      enabled: true
+
+  - name: Start TaDA-Hardware-Info-Update-EraseIT.service and make sure it's enabled
+    systemd_service:
+      daemon_reload: true
+      name: TaDA-Hardware-Info-Update-EraseIT.service
+      state: started
+      enabled: true
+
+  ####
+  #
+  # CTA ShredOS
+  #
+  ####
+  
+  # - name: Clone CTA ShredOS repo
+  #   git:
+  #     repo: "https://github.com/CommunityTechaid/CTA-ShredOS.git"
+  #     dest: '{{ temp_dir["path"] }}/CTAShredOS'
+  #     version: master
+
+  # - name: Initialise config for building CTAShredOS
+  #   shell: make shredos_defconfig
+  #   args:
+  #     chdir: '{{ temp_dir["path"] }}/CTAShredOS'
+
+  # - name: Actually build CTAShredOS. (This'll take a while.)
+  #   shell: make
+  #   args:
+  #     chdir: '{{ temp_dir["path"] }}/CTAShredOS'
+  
+  # cp files to /srv/netboot
+  # mount
+
+  ####
+  #
+  # LibVirt / VM Host
+  #
+  ####
+
+  ####
+  #
+  # VM Backups / Guests
+  #
+  ####
+
+  ####
+  #
+  # EraseIT Image
+  #
+  ####
+
+  ####
+  #
+  # HardwareOS
+  #
+  ####
+
+  # - name: Clone CTA Hardware OS repo
+  #   become_user: vagrant
+  #   git:
+  #     repo: "git@github.com:CommunityTechaid/HardwareOS.git"
+  #     dest: '{{ temp_dir["path"] }}/CTAHardwareOS'
+  #     key_file: "/vagrant/ssh-keys/github_ed25519"
+  #     accept_newhostkey: true
+  #     version: main
+
+  # - name: Initialise config for building CTA Hardware OS
+  #   shell: make HardwareOS_defconfig
+  #   become_user: vagrant
+  #   args:
+  #     chdir: '{{ temp_dir["path"] }}/CTAHardwareOS'
+
+  # - name: Actually build CTA Hardware OS. (This'll take a while.)
+  #   shell: make
+  #   become_user: vagrant
+  #   args:
+  #     chdir: '{{ temp_dir["path"] }}/CTAHardwareOS'
+
+  # - name: Copy Hardware OS to server location
+  #   copy:
+  #     remote_src: true  # Src file exists remotely _to the ansible controller_
+  #     src: '{{ temp_dir["path"] }}/CTAHardwareOS/output/images/bzImage'
+  #     dest: /srv/netboot/HardwareOS/bzImage
+  
+  ####
+  #
+  # CTA Wipe Certificates (Defunct?)
+  #
+  ####
+
+  ####
+  #
+  # CTA Linux ISO (Defunct?)
+  #
+  ####
